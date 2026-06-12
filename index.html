@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>命中有答案 — 道教命理・今日運勢</title>
+<meta name="description" content="輸入你在廣告中得到的神諭密語，結合命字，AI為你解讀今日運勢與姓名吉禍。台灣道教佛教命理，命中有答案。">
+<style>
+  :root {
+    --gold: #D4AF37;
+    --gold-light: #F5D77E;
+    --deep-purple: #1a0a2e;
+    --purple: #2d1457;
+    --red-sacred: #8B0000;
+    --text-light: #f0e6c8;
+    --text-dim: #b8a07a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif TC', 'Songti SC', serif;
+    background: var(--deep-purple);
+    color: var(--text-light);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── 粒子背景 ── */
+  #particles-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── 英雄區 ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 2rem 1.5rem 6rem;
+    z-index: 1;
+    background: url('https://api.kuse.ai/api/folder/v1/file/d09dd1a3185254d1382808c456d1f67f0cc0c43e575aaa8ce0f38fc8dcfddbac_7248506.jpeg') center/cover no-repeat;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      rgba(10,3,30,0.72) 0%,
+      rgba(26,10,46,0.88) 60%,
+      rgba(26,10,46,1) 100%);
+  }
+  .hero-content { position: relative; z-index: 2; max-width: 480px; }
+
+  .deity-badge {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    color: var(--gold-light);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    padding: 0.3rem 1rem;
+    border-radius: 2rem;
+    margin-bottom: 1.2rem;
+    background: rgba(212,175,55,0.1);
+    animation: fadeInDown 0.8s ease;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 8vw, 3.2rem);
+    font-weight: 900;
+    line-height: 1.15;
+    color: var(--gold-light);
+    text-shadow: 0 0 40px rgba(212,175,55,0.6);
+    margin-bottom: 0.8rem;
+    animation: fadeInDown 0.9s ease;
+  }
+  .hero h1 span { color: #fff; }
+
+  .hero-sub {
+    font-size: 1rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    animation: fadeInDown 1s ease;
+  }
+
+  /* ── 答案輸入卡 ── */
+  .answer-card {
+    background: rgba(26,10,46,0.92);
+    border: 1px solid rgba(212,175,55,0.4);
+    border-radius: 1.2rem;
+    padding: 1.8rem 1.5rem;
+    max-width: 480px;
+    margin: 0 auto 1.5rem;
+    position: relative; z-index: 1;
+    box-shadow: 0 0 40px rgba(212,175,55,0.12), 0 8px 32px rgba(0,0,0,0.5);
+    animation: fadeInUp 1s ease;
+  }
+
+  .card-title {
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    margin-bottom: 1.2rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title::before, .card-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .input-group { margin-bottom: 1rem; }
+  .input-group label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.08em;
+  }
+  .input-group input, .input-group select {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 0.6rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-light);
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .input-group input:focus, .input-group select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212,175,55,0.2);
+  }
+  .input-group input::placeholder { color: rgba(184,160,122,0.5); }
+
+  .hint-text {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+    line-height: 1.5;
+  }
+
+  .btn-divine {
+    width: 100%;
+    padding: 0.9rem;
+    background: linear-gradient(135deg, #8B6914, #D4AF37, #8B6914);
+    background-size: 200% 200%;
+    border: none;
+    border-radius: 0.7rem;
+    color: #1a0a2e;
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.3s;
+    animation: shimmer 3s infinite;
+    margin-top: 0.5rem;
+  }
+  .btn-divine:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(212,175,55,0.4); }
+  .btn-divine:active { transform: translateY(0); }
+  .btn-divine:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* ── AI 對話框 ── */
+  .chat-section {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 1rem 2rem;
+    position: relative; z-index: 1;
+    display: none;
+  }
+  .chat-section.visible { display: block; animation: fadeInUp 0.6s ease; }
+
+  .chat-box {
+    background: rgba(20,8,40,0.95);
+    border: 1px solid rgba(212,175,55,0.35);
+    border-radius: 1.2rem;
+    overflow: hidden;
+    box-shadow: 0 0 50px rgba(212,175,55,0.1);
+  }
+
+  .chat-header {
+    background: linear-gradient(135deg, rgba(139,105,20,0.4), rgba(45,20,87,0.6));
+    padding: 0.9rem 1.2rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    border-bottom: 1px solid rgba(212,175,55,0.2);
+  }
+  .chat-avatar {
+    width: 36px; height: 36px;
+    background: radial-gradient(circle, #D4AF37, #8B6914);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .chat-header-info h3 { font-size: 0.85rem; color: var(--gold-light); }
+  .chat-header-info p { font-size: 0.68rem; color: var(--text-dim); }
+  .online-dot {
+    width: 7px; height: 7px;
+    background: #4ade80;
+    border-radius: 50%;
+    margin-left: auto;
+    box-shadow: 0 0 6px #4ade80;
+    animation: pulse 2s infinite;
+  }
+
+  .chat-messages {
+    padding: 1.2rem;
+    min-height: 200px;
+    max-height: 420px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; }
+
+  .msg {
+    display: flex; gap: 0.6rem; align-items: flex-start;
+  }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+  }
+  .msg.ai .msg-avatar { background: radial-gradient(circle, #D4AF37, #8B6914); }
+  .msg.user .msg-avatar { background: rgba(212,175,55,0.2); border: 1px solid var(--gold); }
+
+  .msg-bubble {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    font-size: 0.88rem;
+    line-height: 1.65;
+  }
+  .msg.ai .msg-bubble {
+    background: rgba(45,20,87,0.7);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-top-left-radius: 0.2rem;
+    color: var(--text-light);
+  }
+  .msg.user .msg-bubble {
+    background: rgba(212,175,55,0.15);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-top-right-radius: 0.2rem;
+    color: var(--gold-light);
+    text-align: right;
+  }
+
+  .typing-indicator {
+    display: flex; gap: 4px; align-items: center; padding: 0.5rem 0;
+  }
+  .typing-indicator span {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: typing 1.2s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── Line CTA ── */
+  .line-cta {
+    max-width: 480px;
+    margin: 1.5rem auto 0;
+    padding: 0 1rem;
+    position: relative; z-index: 1;
+    display: none;
+  }
+  .line-cta.visible { display: block; animation: fadeInUp 0.7s ease; }
+
+  .line-card {
+    background: linear-gradient(135deg, rgba(0,185,0,0.15), rgba(0,185,0,0.05));
+    border: 1px solid rgba(0,185,0,0.4);
+    border-radius: 1.2rem;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .line-card h3 {
+    font-size: 1.05rem;
+    color: #4ade80;
+    margin-bottom: 0.5rem;
+  }
+  .line-card p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 1.2rem;
+    line-height: 1.6;
+  }
+  .btn-line {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    background: #06C755;
+    color: #fff;
+    padding: 0.85rem 2rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(6,199,85,0.4);
+  }
+  .btn-line:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(6,199,85,0.5); }
+  .btn-line svg { width: 22px; height: 22px; fill: white; }
+
+  /* ── 特色區 ── */
+  .features {
+    max-width: 480px;
+    margin: 2rem auto 0;
+    padding: 0 1rem 3rem;
+    position: relative; z-index: 1;
+  }
+  .section-title {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--gold);
+    letter-spacing: 0.25em;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .section-title::before, .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent);
+  }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .feature-item {
+    background: rgba(45,20,87,0.5);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 0.8rem;
+    padding: 1rem;
+    text-align: center;
+  }
+  .feature-icon { font-size: 1.6rem; margin-bottom: 0.4rem; }
+  .feature-item h4 { font-size: 0.82rem; color: var(--gold-light); margin-bottom: 0.3rem; }
+  .feature-item p { font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    line-height: 1.8;
+    position: relative; z-index: 1;
+    border-top: 1px solid rgba(212,175,55,0.1);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30%           { transform: translateY(-6px); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem; left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    animation: float 2s ease-in-out infinite;
+    z-index: 2;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles-canvas"></canvas>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="deity-badge">☯ 台灣道教・佛教命理系統 ☯</div>
+    <h1>命中<span>有答案</span></h1>
+    <p class="hero-sub">
+      輸入廣告中得到的神諭密語<br>
+      結合你的命字，AI為你揭示今日運勢
+    </p>
+  </div>
+  <div class="scroll-indicator">↓ 輸入神諭 ↓</div>
+</section>
+
+<!-- ── 答案輸入卡 ── -->
+<div class="answer-card">
+  <div class="card-title">✦ 輸入神諭密語 ✦</div>
+
+  <div class="input-group">
+    <label>廣告中得到的神諭答案</label>
+    <input type="text" id="oracle-answer" placeholder="例：普賢菩薩（知行合一，龍蛇守護）" />
+    <p class="hint-text">⚑ 請輸入你在廣告影片中看到的完整答案</p>
+  </div>
+
+  <div class="input-group">
+    <label>你的姓名</label>
+    <input type="text" id="user-name" placeholder="例：陳志明" maxlength="10" />
+  </div>
+
+  <div class="input-group">
+    <label>命字（生肖 / 五行 / 或廣告指定字）</label>
+    <input type="text" id="destiny-char" placeholder="例：龍、水、木、心…" maxlength="5" />
+    <p class="hint-text">⚑ 廣告影片中會指示你的命字</p>
+  </div>
+
+  <button class="btn-divine" id="divine-btn" onclick="startDivination()">
+    ☰ 啟動神諭解讀 ☰
+  </button>
+</div>
+
+<!-- ── AI 對話框 ── -->
+<div class="chat-section" id="chat-section">
+  <div class="chat-box">
+    <div class="chat-header">
+      <div class="chat-avatar">🔮</div>
+      <div class="chat-header-info">
+        <h3>命中靈師・AI神諭</h3>
+        <p>道教・佛教命理系統</p>
+      </div>
+      <div class="online-dot"></div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+  </div>
+</div>
+
+<!-- ── LINE CTA ── -->
+<div class="line-cta" id="line-cta">
+  <div class="line-card">
+    <h3>🙏 神諭已為你開示</h3>
+    <p>
+      想獲得更深入的命盤分析、<br>
+      每日運勢推播與專屬命理師解讀？<br>
+      加入我們的Line粉絲團，<strong style="color:#4ade80">命中有答案</strong>
+    </p>
+    <a href="https://line.me/ti/p/kqjUcUbsvw" target="_blank" class="btn-line">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+      </svg>
+      加入「命中有答案」Line
+    </a>
+  </div>
+</div>
+
+<!-- ── 特色區 ── -->
+<div class="features">
+  <div class="section-title">✦ 系統依據 ✦</div>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-icon">🐉</div>
+      <h4>道教神靈體系</h4>
+      <p>玉皇大帝、城隍、土地公等台灣道教諸神守護</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🪷</div>
+      <h4>佛教菩薩庇佑</h4>
+      <p>普賢、觀音、文殊諸菩薩智慧指引</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">☯</div>
+      <h4>五行命字解析</h4>
+      <p>金木水火土五行與姓名吉禍深度解讀</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📿</div>
+      <h4>今日運勢推算</h4>
+      <p>結合農民曆、生肖、神諭密語三重推算</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>命中有答案 ・ 台灣道教佛教命理系統</p>
+  <p style="margin-top:0.4rem">本網站提供娛樂性命理參考，不構成任何投資或醫療建議</p>
+  <p style="margin-top:0.4rem">© 2026 命中有答案 All rights reserved</p>
+</footer>
+
+<script>
+// ── 粒子背景 ──
+(function() {
+  const canvas = document.getElementById('particles-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const SYMBOLS = ['☯','✦','龍','蛇','命','道','佛','願','福','壽','☽','✿'];
+  for (let i = 0; i < 28; i++) {
+    particles.push({
+      x: Math.random() * 1, y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.0003,
+      vy: -Math.random() * 0.0003 - 0.0001,
+      alpha: Math.random() * 0.35 + 0.05,
+      size: Math.random() * 12 + 8,
+      sym: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of particles) {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = '#D4AF37';
+      ctx.font = `${p.size}px serif`;
+      ctx.fillText(p.sym, p.x * W, p.y * H);
+      ctx.restore();
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
+      if (p.x < -0.05 || p.x > 1.05) { p.x = Math.random(); }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── 神諭解讀邏輯 ──
+const DEITY_MAP = {
+  '普賢': { title:'普賢菩薩', virtue:'知行合一', guardian:'龍蛇守護', element:'土', color:'金黃' },
+  '觀音': { title:'觀世音菩薩', virtue:'慈悲濟世', guardian:'龍女護法', element:'水', color:'白' },
+  '文殊': { title:'文殊菩薩', virtue:'智慧無礙', guardian:'青獅守護', element:'金', color:'藍' },
+  '關聖': { title:'關聖帝君', virtue:'忠義仁勇', guardian:'赤兔護法', element:'火', color:'赤' },
+  '媽祖': { title:'天上聖母', virtue:'護航平安', guardian:'千里眼順風耳', element:'水', color:'紅' },
+  '城隍': { title:'城隍爺', virtue:'公正護民', guardian:'七爺八爺', element:'土', color:'黑' },
+};
+
+const FORTUNE_TEMPLATES = [
+  (name, deity, char) => `
+✦ 今日運勢 ✦\n\n${name} 善信，神諭已開示。
+
+今日受【${deity.title}】庇護，${deity.virtue}之氣環繞左右。命字「${char}」與${deity.element}行相合，今日諸事宜靜中求動。
+
+▸ 事業：貴人在西方，午後有佳訊，切勿急躁，以誠信待人可獲福報。
+▸ 財運：偏財有機，正財穩健，${deity.guardian}護佑，謹防口舌之爭耗財。
+▸ 感情：緣分流動，單身者今日宜主動，有伴者宜多溝通。
+▸ 健康：${deity.element}行旺盛，注意飲食，多補充水分。
+
+今日吉時：午時（11:00-13:00）
+`,
+  (name, deity, char) => `
+✦ 今日神諭 ✦\n\n${name}，菩薩已觀你命中之象。
+
+命字「${char}」映照${deity.element}行之力，今日${deity.title}以${deity.virtue}之道指引你。
+
+▸ 上午：宜靜思，整理思緒，避免衝突。
+▸ 下午：${deity.guardian}同行，可大膽推進計畫。
+▸ 傍晚：有意外之喜，留意身邊貴人提示。
+
+整體運勢：★★★★☆（吉）
+`,
+];
+
+const NAME_ANALYSIS = {
+  吉字: {
+    '明': '光明磊落，照耀四方，事業財運皆旺',
+    '志': '志向高遠，意志堅定，貴人相助',
+    '福': '福澤深厚，財運亨通，家庭和樂',
+    '慧': '智慧通達，學業事業皆順',
+    '龍': '龍騰四海，氣勢磅礡，領導力強',
+    '鳳': '鳳凰涅槃，貴氣逼人，財帛豐盈',
+    '文': '文昌護佑，學業有成，口才出眾',
+    '雄': '英雄氣概，事業宏圖，勇往直前',
+  },
+  禍字: {
+    '凶': '此字帶煞，宜佩戴護身符化解',
+    '殺': '殺氣過重，需以慈悲心化之',
+    '破': '破字帶損，財運易有耗損，宜謹慎',
+  }
+};
+
+function analyzeNameGoodBad(name) {
+  let result = { good: [], bad: [] };
+  for (const char of name) {
+    if (NAME_ANALYSIS.吉字[char]) result.good.push({ char, meaning: NAME_ANALYSIS.吉字[char] });
+    if (NAME_ANALYSIS.禍字[char]) result.bad.push({ char, meaning: NAME_ANALYSIS.禍字[char] });
+  }
+  return result;
+}
+
+function detectDeity(answer) {
+  for (const key of Object.keys(DEITY_MAP)) {
+    if (answer.includes(key)) return DEITY_MAP[key];
+  }
+  // 預設普賢
+  return DEITY_MAP['普賢'];
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function addMessage(role, text, delay = 0) {
+  if (delay) await sleep(delay);
+  const container = document.getElementById('chat-messages');
+  
+  // 移除 typing indicator
+  const typing = container.querySelector('.typing-msg');
+  if (typing) typing.remove();
+
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'ai' ? '🔮' : '🙏';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.style.whiteSpace = 'pre-line';
+  bubble.textContent = text;
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg ai typing-msg';
+  div.innerHTML = `
+    <div class="msg-avatar">🔮</div>
+    <div class="msg-bubble">
+      <div class="typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function startDivination() {
+  const answer = document.getElementById('oracle-answer').value.trim();
+  const name   = document.getElementById('user-name').value.trim();
+  const char   = document.getElementById('destiny-char').value.trim();
+
+  if (!answer || !name || !char) {
+    alert('請填寫神諭答案、姓名與命字，缺一不可。');
+    return;
+  }
+
+  const btn = document.getElementById('divine-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 神諭解讀中…';
+
+  // 顯示對話框
+  const chatSection = document.getElementById('chat-section');
+  chatSection.classList.add('visible');
+  chatSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // 清空訊息
+  document.getElementById('chat-messages').innerHTML = '';
+
+  // 用戶訊息
+  await addMessage('user', `神諭密語：${answer}\n姓名：${name}\n命字：${char}`);
+  await sleep(600);
+
+  // AI 打字中
+  await showTyping();
+  await sleep(1800);
+
+  // 偵測神明
+  const deity = detectDeity(answer);
+
+  // 運勢訊息
+  const fortuneText = FORTUNE_TEMPLATES[Math.floor(Math.random() * FORTUNE_TEMPLATES.length)](name, deity, char);
+  await addMessage('ai', fortuneText);
+  await sleep(800);
+
+  // 姓名吉禍分析
+  await showTyping();
+  await sleep(1500);
+
+  const nameAnalysis = analyzeNameGoodBad(name);
+  let nameMsg = `✦ 姓名吉禍解析 ✦\n\n「${name}」命格分析：\n`;
+
+  if (nameAnalysis.good.length > 0) {
+    nameMsg += '\n☀ 吉字：\n';
+    for (const g of nameAnalysis.good) {
+      nameMsg += `  「${g.char}」— ${g.meaning}\n`;
+    }
+  } else {
+    // 通用正面解析
+    const generalGood = [
+      `「${name[0]}」— 此字五行與命字「${char}」相生，事業運旺盛`,
+      `「${name[name.length-1]}」— 末字藏福，晚運豐厚，財帛自來`,
+    ];
+    nameMsg += '\n☀ 吉象：\n';
+    for (const g of generalGood) nameMsg += `  ${g}\n`;
+  }
+
+  if (nameAnalysis.bad.length > 0) {
+    nameMsg += '\n⚠ 需化解：\n';
+    for (const b of nameAnalysis.bad) {
+      nameMsg += `  「${b.char}」— ${b.meaning}\n`;
+    }
+  } else {
+    nameMsg += '\n✓ 名中無明顯禍字，整體命格平穩吉祥。';
+  }
+
+  await addMessage('ai', nameMsg);
+  await sleep(1000);
+
+  // 引導 Line
+  await showTyping();
+  await sleep(1200);
+  await addMessage('ai', `🙏 ${name} 善信，\n\n神諭已完整開示。若您希望獲得：\n\n• 每日個人化運勢推播\n• 深度命盤八字解析\n• 專屬命理師一對一問答\n• 化解禍字、招財改運法門\n\n請加入我們的Line粉絲團【命中有答案】，由命理師為您深入解讀 🔮`);
+
+  // 顯示 Line CTA
+  await sleep(600);
+  const lineCta = document.getElementById('line-cta');
+  lineCta.classList.add('visible');
+  lineCta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  btn.disabled = false;
+  btn.textContent = '☰ 重新解讀 ☰';
+}
+</script>
+</body>
+</html>
